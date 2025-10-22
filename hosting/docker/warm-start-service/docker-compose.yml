@@ -1,0 +1,32 @@
+version: "3.8"
+
+services:
+  warm-start:
+    build:
+      context: ../../../
+      dockerfile: apps/warm-start-service/Dockerfile
+    container_name: trigger-warm-start
+    restart: unless-stopped
+    ports:
+      - "${WARM_START_PORT:-3040}:3040"
+    environment:
+      - NODE_ENV=production
+      - PORT=3040
+      - DEBUG=${WARM_START_DEBUG:-0}
+      - DEFAULT_CONNECTION_TIMEOUT_MS=${WARM_START_CONNECTION_TIMEOUT_MS:-30000}
+      - DEFAULT_KEEPALIVE_MS=${WARM_START_KEEPALIVE_MS:-300000}
+      - WORKER_TIMEOUT_MS=${WARM_START_WORKER_TIMEOUT_MS:-310000}
+    networks:
+      - trigger-network
+    healthcheck:
+      test:
+        ["CMD", "wget", "--spider", "-q", "http://localhost:3040/healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  trigger-network:
+    external: true
+    name: trigger_webapp

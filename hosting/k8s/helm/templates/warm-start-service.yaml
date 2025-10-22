@@ -1,0 +1,100 @@
+{{- if .Values.warmStartService.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "trigger-v4.fullname" . }}-warm-start
+  labels:
+    {{- $component := "warm-start" }}
+    {{- include "trigger-v4.componentLabels" (dict "Chart" .Chart "Release" .Release "Values" .Values "component" $component) | nindent 4 }}
+spec:
+  type: {{ .Values.warmStartService.service.type }}
+  ports:
+    - port: {{ .Values.warmStartService.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "trigger-v4.componentSelectorLabels" (dict "Chart" .Chart "Release" .Release "Values" .Values "component" $component) | nindent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "trigger-v4.fullname" . }}-warm-start
+  labels:
+    {{- $component := "warm-start" }}
+    {{- include "trigger-v4.componentLabels" (dict "Chart" .Chart "Release" .Release "Values" .Values "component" $component) | nindent 4 }}
+spec:
+  replicas: {{ .Values.warmStartService.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "trigger-v4.componentSelectorLabels" (dict "Chart" .Chart "Release" .Release "Values" .Values "component" $component) | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/warm-start-service.yaml") . | sha256sum }}
+        {{- with .Values.warmStartService.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "trigger-v4.componentSelectorLabels" (dict "Chart" .Chart "Release" .Release "Values" .Values "component" $component) | nindent 8 }}
+        {{- with .Values.warmStartService.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.warmStartService.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: warm-start
+          image: "{{ .Values.warmStartService.image.repository }}:{{ .Values.warmStartService.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.warmStartService.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3040
+              protocol: TCP
+          env:
+            - name: PORT
+              value: "3040"
+            - name: NODE_ENV
+              value: "production"
+            - name: DEBUG
+              value: {{ .Values.warmStartService.debug | quote }}
+            - name: DEFAULT_CONNECTION_TIMEOUT_MS
+              value: {{ .Values.warmStartService.defaultConnectionTimeoutMs | quote }}
+            - name: DEFAULT_KEEPALIVE_MS
+              value: {{ .Values.warmStartService.defaultKeepaliveMs | quote }}
+            - name: WORKER_TIMEOUT_MS
+              value: {{ .Values.warmStartService.workerTimeoutMs | quote }}
+          livenessProbe:
+            httpGet:
+              path: /healthcheck
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /healthcheck
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 2
+          resources:
+            {{- toYaml .Values.warmStartService.resources | nindent 12 }}
+      {{- with .Values.warmStartService.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.warmStartService.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.warmStartService.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}
+

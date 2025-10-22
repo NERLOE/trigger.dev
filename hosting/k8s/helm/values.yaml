@@ -254,6 +254,45 @@ webapp:
       #   hosts:
       #     - trigger.local
 
+# Warm Start Service configuration
+warmStartService:
+  enabled: false # Set to true to enable warm starts for self-hosted infrastructure
+
+  image:
+    registry: ghcr.io
+    repository: triggerdotdev/warm-start-service
+    tag: "" # Defaults to Chart.appVersion when empty
+    pullPolicy: IfNotPresent
+
+  replicaCount: 2 # Can be scaled horizontally
+
+  service:
+    type: ClusterIP
+    port: 3040
+
+  # Warm start configuration
+  debug: "0" # Set to "1" to enable debug logging
+  defaultConnectionTimeoutMs: 30000 # 30 seconds
+  defaultKeepaliveMs: 300000 # 5 minutes
+  workerTimeoutMs: 310000 # Slightly longer than keepalive
+
+  podAnnotations: {}
+  podLabels: {}
+
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+  imagePullSecrets: []
+
 # Supervisor configuration
 supervisor:
   image:

@@ -163,6 +163,11 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
+            {{- if .Values.warmStartService.enabled }}
+            # Warm start service URL
+            - name: TRIGGER_WARM_START_URL
+              value: "http://{{ include "trigger-v4.fullname" . }}-warm-start:{{ .Values.warmStartService.service.port }}"
+            {{- end }}
             # Kubernetes configuration
             - name: KUBERNETES_NAMESPACE
               value: {{ default .Release.Namespace .Values.supervisor.config.kubernetes.namespace | quote }}
