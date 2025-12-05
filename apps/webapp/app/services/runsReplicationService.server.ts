@@ -96,6 +96,8 @@ export class RunsReplicationService {
   private _latestCommitEndLsn: string | null = null;
   private _lastAcknowledgedLsn: string | null = null;
   private _acknowledgeInterval: NodeJS.Timeout | null = null;
+  private _leaderElectionRetryTimer: NodeJS.Timeout | null = null;
+  private _leaderElectionRetryCount = 0;
   // Retry configuration
   private _insertMaxRetries: number;
   private _insertBaseDelayMs: number;
@@ -191,10 +193,16 @@ export class RunsReplicationService {
       this.logger.error("Replication client error", {
         error,
       });
+
+      if (this._replicationClient.isStopped && !this._isShuttingDown) {
+        this._isSubscribed = false;
+        this.#scheduleLeaderElectionRetry();
+      }
     });
 
     this._replicationClient.events.on("start", () => {
       this.logger.info("Replication client started");
+      this._isSubscribed = true;
     });
 
     this._replicationClient.events.on("acknowledge", ({ lsn }) => {
@@ -203,6 +211,11 @@ export class RunsReplicationService {
 
     this._replicationClient.events.on("leaderElection", (isLeader) => {
       this.logger.info("Leader election", { isLeader });
+      this._isSubscribed = isLeader;
+
+      if (!isLeader && !this._isShuttingDown) {
+        this.#scheduleLeaderElectionRetry();
+      }
     });
 
     // Initialize retry configuration
@@ -217,6 +230,11 @@ export class RunsReplicationService {
     this._isShuttingDown = true;
 
     this.logger.info("Initiating shutdown of runs replication service");
+
+    if (this._leaderElectionRetryTimer) {
+      clearTimeout(this._leaderElectionRetryTimer);
+      this._leaderElectionRetryTimer = null;
+    }
 
     if (!this._currentTransaction) {
       this.logger.info("No transaction to commit, shutting down immediately");
@@ -235,18 +253,84 @@ export class RunsReplicationService {
 
     await this._replicationClient.subscribe(this._latestCommitEndLsn ?? undefined);
 
+    if (this._isSubscribed) {
+      this.#startAcknowledgeInterval();
+      this._concurrentFlushScheduler.start();
+    }
+  }
+
+  #startAcknowledgeInterval() {
+    if (this._acknowledgeInterval) {
+      clearInterval(this._acknowledgeInterval);
+    }
     this._acknowledgeInterval = setInterval(this.#acknowledgeLatestTransaction.bind(this), 1000);
-    this._concurrentFlushScheduler.start();
+  }
+
+  #scheduleLeaderElectionRetry() {
+    if (this._isShuttingDown || this._isShutDownComplete) {
+      return;
+    }
+
+    if (this._leaderElectionRetryTimer) {
+      clearTimeout(this._leaderElectionRetryTimer);
+    }
+
+    const baseDelayMs = (this.options.leaderLockTimeoutMs ?? 30_000) + 5_000;
+    const maxDelayMs = 5 * 60 * 1_000; // 5 minutes max
+    const retryDelayMs = Math.min(baseDelayMs * Math.pow(2, this._leaderElectionRetryCount), maxDelayMs);
+
+    this._leaderElectionRetryCount++;
+
+    this.logger.info("Scheduling leader election retry", {
+      retryDelayMs,
+      retryCount: this._leaderElectionRetryCount,
+    });
+
+    this._leaderElectionRetryTimer = setTimeout(async () => {
+      if (this._isShuttingDown || this._isShutDownComplete || this._isSubscribed) {
+        return;
+      }
+
+      const hasLeader = await this._replicationClient.hasLeader();
+
+      if (hasLeader) {
+        this.logger.info("Leader exists, skipping retry", {
+          retryCount: this._leaderElectionRetryCount,
+        });
+        this.#scheduleLeaderElectionRetry();
+        return;
+      }
+
+      this.logger.info("No leader found, attempting to become leader", {
+        retryCount: this._leaderElectionRetryCount,
+      });
+
+      await this._replicationClient.subscribe(this._latestCommitEndLsn ?? undefined);
+
+      if (this._isSubscribed) {
+        this._leaderElectionRetryCount = 0;
+        this.#startAcknowledgeInterval();
+        this._concurrentFlushScheduler.start();
+      }
+    }, retryDelayMs);
   }
 
   async stop() {
     this.logger.info("Stopping replication client");
+
+    if (this._leaderElectionRetryTimer) {
+      clearTimeout(this._leaderElectionRetryTimer);
+      this._leaderElectionRetryTimer = null;
+    }
 
     await this._replicationClient.stop();
 
     if (this._acknowledgeInterval) {
       clearInterval(this._acknowledgeInterval);
     }
+
+    this._isSubscribed = false;
+    this._leaderElectionRetryCount = 0;
   }
 
   async teardown() {
