@@ -1,6 +1,15 @@
-import { ClickHouse } from "@internal/clickhouse";
+import { ClickHouse, type ClickHouseSettings } from "@internal/clickhouse";
 import { env } from "~/env.server";
 import { singleton } from "~/utils/singleton";
+
+function progressHeaderSettings(): ClickHouseSettings {
+  return {
+    ...(env.CLICKHOUSE_SEND_PROGRESS_IN_HTTP_HEADERS === "1" && {
+      send_progress_in_http_headers: 1,
+      http_headers_progress_interval_ms: env.CLICKHOUSE_HTTP_HEADERS_PROGRESS_INTERVAL_MS,
+    }),
+  };
+}
 
 export const clickhouseClient = singleton("clickhouseClient", initializeClickhouseClient);
 
@@ -24,6 +33,7 @@ function initializeClickhouseClient() {
       request: true,
     },
     maxOpenConnections: env.CLICKHOUSE_MAX_OPEN_CONNECTIONS,
+    clickhouseSettings: progressHeaderSettings(),
   });
 
   return clickhouse;
@@ -57,6 +67,7 @@ function initializeLogsClickhouseClient() {
     },
     maxOpenConnections: env.CLICKHOUSE_MAX_OPEN_CONNECTIONS,
     clickhouseSettings: {
+      ...progressHeaderSettings(),
       max_memory_usage: env.CLICKHOUSE_LOGS_LIST_MAX_MEMORY_USAGE.toString(),
       max_bytes_before_external_sort:
         env.CLICKHOUSE_LOGS_LIST_MAX_BYTES_BEFORE_EXTERNAL_SORT.toString(),
@@ -126,5 +137,6 @@ function initializeQueryClickhouseClient() {
       request: true,
     },
     maxOpenConnections: env.CLICKHOUSE_MAX_OPEN_CONNECTIONS,
+    clickhouseSettings: progressHeaderSettings(),
   });
 }

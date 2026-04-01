@@ -33,6 +33,12 @@ function getClickhouseClient() {
       request: env.EVENTS_CLICKHOUSE_COMPRESSION_REQUEST === "1",
     },
     maxOpenConnections: env.EVENTS_CLICKHOUSE_MAX_OPEN_CONNECTIONS,
+    clickhouseSettings: {
+      ...(env.CLICKHOUSE_SEND_PROGRESS_IN_HTTP_HEADERS === "1" && {
+        send_progress_in_http_headers: 1,
+        http_headers_progress_interval_ms: env.CLICKHOUSE_HTTP_HEADERS_PROGRESS_INTERVAL_MS,
+      }),
+    },
   });
 }
 

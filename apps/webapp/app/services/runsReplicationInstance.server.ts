@@ -34,6 +34,12 @@ function initializeRunsReplicationInstance() {
       request: true,
     },
     maxOpenConnections: env.RUN_REPLICATION_MAX_OPEN_CONNECTIONS,
+    clickhouseSettings: {
+      ...(env.CLICKHOUSE_SEND_PROGRESS_IN_HTTP_HEADERS === "1" && {
+        send_progress_in_http_headers: 1,
+        http_headers_progress_interval_ms: env.CLICKHOUSE_HTTP_HEADERS_PROGRESS_INTERVAL_MS,
+      }),
+    },
   });
 
   const service = new RunsReplicationService({
@@ -58,6 +64,7 @@ function initializeRunsReplicationInstance() {
     leaderLockExtendIntervalMs: env.RUN_REPLICATION_LEADER_LOCK_EXTEND_INTERVAL_MS,
     leaderLockAcquireAdditionalTimeMs: env.RUN_REPLICATION_LEADER_LOCK_ADDITIONAL_TIME_MS,
     leaderLockRetryIntervalMs: env.RUN_REPLICATION_LEADER_LOCK_RETRY_INTERVAL_MS,
+    leaderElectionRetryIntervalMs: env.RUN_REPLICATION_LEADER_ELECTION_RETRY_INTERVAL_MS,
     ackIntervalSeconds: env.RUN_REPLICATION_ACK_INTERVAL_SECONDS,
     logLevel: env.RUN_REPLICATION_LOG_LEVEL,
     waitForAsyncInsert: env.RUN_REPLICATION_WAIT_FOR_ASYNC_INSERT === "1",
