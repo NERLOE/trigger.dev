@@ -114,6 +114,12 @@ export class LogicalReplicationClient {
     return this._isStopped;
   }
 
+  public async hasLeader(): Promise<boolean> {
+    const lockKey = `logical-replication-client:${this.options.name}`;
+    const exists = await this.redis.exists(lockKey);
+    return exists === 1;
+  }
+
   constructor(options: LogicalReplicationClientOptions) {
     this.options = options;
     this.logger = options.logger ?? new Logger("LogicalReplicationClient", "info");
