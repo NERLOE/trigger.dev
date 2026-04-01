@@ -22,6 +22,7 @@ const CreateRunReplicationServiceParams = z.object({
   leaderLockExtendIntervalMs: z.number(),
   leaderLockAcquireAdditionalTimeMs: z.number(),
   leaderLockRetryIntervalMs: z.number(),
+  leaderElectionRetryIntervalMs: z.number().optional(),
   ackIntervalSeconds: z.number(),
   waitForAsyncInsert: z.boolean(),
 });
@@ -113,6 +114,7 @@ function createRunReplicationService(params: CreateRunReplicationServiceParams) 
     leaderLockExtendIntervalMs: params.leaderLockExtendIntervalMs,
     leaderLockAcquireAdditionalTimeMs: params.leaderLockAcquireAdditionalTimeMs,
     leaderLockRetryIntervalMs: params.leaderLockRetryIntervalMs,
+    leaderElectionRetryIntervalMs: params.leaderElectionRetryIntervalMs,
     ackIntervalSeconds: params.ackIntervalSeconds,
     logLevel: "debug",
     waitForAsyncInsert: params.waitForAsyncInsert,

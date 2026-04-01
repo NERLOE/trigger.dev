@@ -166,8 +166,10 @@ if (ENABLE_CLUSTER && cluster.isPrimary) {
         });
       }
 
-      app.use(apiRateLimiter);
-      app.use(engineRateLimiter);
+      if (process.env.RATE_LIMITS_DISABLED !== "true") {
+        app.use(apiRateLimiter);
+        app.use(engineRateLimiter);
+      }
 
       app.all(
         "*",

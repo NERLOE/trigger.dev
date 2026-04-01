@@ -572,6 +572,8 @@ const EnvironmentSchema = z
     BATCH_RATE_LIMIT_REFILL_RATE: z.coerce.number().int().default(100),
     BATCH_RATE_LIMIT_MAX: z.coerce.number().int().default(1200),
     BATCH_RATE_LIMIT_REFILL_INTERVAL: z.string().default("10s"),
+    /** When true, batch create rate limit is skipped (e.g. for self-hosted deployments). */
+    RATE_LIMITS_DISABLED: BoolEnv.default(false),
     BATCH_CONCURRENCY_LIMIT_DEFAULT: z.coerce.number().int().default(5),
 
     REALTIME_STREAM_VERSION: z.enum(["v1", "v2"]).default("v1"),
@@ -1201,6 +1203,7 @@ const EnvironmentSchema = z
       .default("info"),
     RUN_REPLICATION_LEADER_LOCK_ADDITIONAL_TIME_MS: z.coerce.number().int().default(10_000),
     RUN_REPLICATION_LEADER_LOCK_RETRY_INTERVAL_MS: z.coerce.number().int().default(500),
+    RUN_REPLICATION_LEADER_ELECTION_RETRY_INTERVAL_MS: z.coerce.number().int().default(5_000),
     RUN_REPLICATION_WAIT_FOR_ASYNC_INSERT: z.string().default("0"),
     RUN_REPLICATION_KEEP_ALIVE_ENABLED: z.string().default("0"),
     RUN_REPLICATION_KEEP_ALIVE_IDLE_SOCKET_TTL_MS: z.coerce.number().int().optional(),
@@ -1219,6 +1222,9 @@ const EnvironmentSchema = z
     CLICKHOUSE_KEEP_ALIVE_IDLE_SOCKET_TTL_MS: z.coerce.number().int().optional(),
     CLICKHOUSE_MAX_OPEN_CONNECTIONS: z.coerce.number().int().default(10),
     CLICKHOUSE_LOG_LEVEL: z.enum(["log", "error", "warn", "info", "debug"]).default("info"),
+    // Progress headers keep connections alive during long operations (prevents PSC/proxy timeouts)
+    CLICKHOUSE_SEND_PROGRESS_IN_HTTP_HEADERS: z.string().default("1"),
+    CLICKHOUSE_HTTP_HEADERS_PROGRESS_INTERVAL_MS: z.coerce.number().int().default(30000),
     CLICKHOUSE_COMPRESSION_REQUEST: z.string().default("1"),
 
     // Logs Query Settings

@@ -4,6 +4,7 @@ import { BatchId, RunId } from "@trigger.dev/core/v3/isomorphic";
 import { type BatchTaskRun, Prisma } from "@trigger.dev/database";
 import { Evt } from "evt";
 import { prisma, type PrismaClientOrTransaction } from "~/db.server";
+import { env } from "~/env.server";
 import type { AuthenticatedEnvironment } from "~/services/apiAuth.server";
 import { logger } from "~/services/logger.server";
 import { ServiceValidationError, WithRunEngine } from "../../v3/services/baseService.server";
@@ -75,20 +76,22 @@ export class CreateBatchService extends WithRunEngine {
           // Extract plan type from entitlement validation for billing tracking
           const planType = entitlementValidation.plan?.type;
 
-          // Get batch limits for this organization
+          // Get batch limits for this organization (rate limit skipped when RATE_LIMITS_DISABLED)
           const { config, rateLimiter } = await getBatchLimits(environment.organization);
 
-          // Check rate limit BEFORE creating the batch
-          // This prevents burst creation of batches that exceed the rate limit
-          const rateResult = await rateLimiter.limit(environment.id, body.runCount);
+          if (!env.RATE_LIMITS_DISABLED) {
+            // Check rate limit BEFORE creating the batch
+            // This prevents burst creation of batches that exceed the rate limit
+            const rateResult = await rateLimiter.limit(environment.id, body.runCount);
 
-          if (!rateResult.success) {
-            throw new BatchRateLimitExceededError(
-              rateResult.limit,
-              rateResult.remaining,
-              new Date(rateResult.reset),
-              body.runCount
-            );
+            if (!rateResult.success) {
+              throw new BatchRateLimitExceededError(
+                rateResult.limit,
+                rateResult.remaining,
+                new Date(rateResult.reset),
+                body.runCount
+              );
+            }
           }
 
           // Note: Queue size limits are validated per-queue when batch items are processed,
