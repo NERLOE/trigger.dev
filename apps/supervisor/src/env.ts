@@ -92,6 +92,7 @@ const Env = z
     KUBERNETES_FORCE_ENABLED: BoolEnv.default(false),
     KUBERNETES_NAMESPACE: z.string().default("default"),
     KUBERNETES_WORKER_NODETYPE_LABEL: z.string().default("v4-worker"),
+    KUBERNETES_WORKER_PRIORITY_CLASS_NAME: z.string().optional(),
     KUBERNETES_IMAGE_PULL_SECRETS: z.string().optional(), // csv
     KUBERNETES_EPHEMERAL_STORAGE_SIZE_LIMIT: z.string().default("10Gi"),
     KUBERNETES_EPHEMERAL_STORAGE_SIZE_REQUEST: z.string().default("2Gi"),
@@ -134,6 +135,7 @@ const Env = z
       .min(1)
       .default("large-machines"),
     KUBERNETES_LARGE_MACHINE_AFFINITY_WEIGHT: z.coerce.number().int().min(1).max(100).default(100),
+    KUBERNETES_POD_PRIORITY_CLASS_NAME: z.string().optional(), // Priority class name for task run pods
 
     // Project affinity settings - pods from the same project prefer the same node
     KUBERNETES_PROJECT_AFFINITY_ENABLED: BoolEnv.default(false),

@@ -117,6 +117,9 @@ export class KubernetesWorkloadManager implements WorkloadManager {
               "app.kubernetes.io/part-of": "trigger-worker",
               "app.kubernetes.io/component": "create",
             },
+            annotations: {
+              "cluster-autoscaler.kubernetes.io/safe-to-evict": "false",
+            },
           },
           spec: {
             ...this.addPlacementTags(this.#defaultPodSpec, opts.placementTags),
@@ -319,6 +322,11 @@ export class KubernetesWorkloadManager implements WorkloadManager {
             nodeSelector: {
               nodetype: env.KUBERNETES_WORKER_NODETYPE_LABEL,
             },
+          }
+        : {}),
+      ...(env.KUBERNETES_WORKER_PRIORITY_CLASS_NAME
+        ? {
+            priorityClassName: env.KUBERNETES_WORKER_PRIORITY_CLASS_NAME,
           }
         : {}),
     };
