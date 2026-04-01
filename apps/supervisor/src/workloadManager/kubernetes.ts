@@ -212,6 +212,10 @@ export class KubernetesWorkloadManager implements WorkloadManager {
                     value: `${opts.machine.memory}`,
                   },
                   {
+                    name: "NODE_OPTIONS",
+                    value: `--max-old-space-size=${Math.floor(opts.machine.memory * 1024 * 0.85)}`,
+                  },
+                  {
                     name: "LIMITS_CPU",
                     valueFrom: {
                       resourceFieldRef: {
