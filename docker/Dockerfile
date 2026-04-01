@@ -75,7 +75,7 @@ RUN --mount=type=secret,id=sentry_auth_token \
 
 # Runner
 FROM ${NODE_IMAGE} AS runner
-RUN apt-get update && apt-get install -y openssl netcat-openbsd ca-certificates
+RUN apt-get update && apt-get install -y openssl netcat-openbsd ca-certificates gettext-base
 WORKDIR /triggerdotdev
 ENV NODE_ENV=production
 
